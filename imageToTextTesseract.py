@@ -9,31 +9,6 @@ import pytesseract
 import argparse
 
 
-# initialize the camera and grab a reference to the raw camera capture
-camera = PiCamera()
-camera.resolution = (640, 480)
-camera.framerate = 32
-rawCapture = PiRGBArray(camera, size=(640, 480))
-
-# allow the camera to warmup
-time.sleep(0.1)
-
-# capture frames from the camera
-for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-    # grab the raw NumPy array representing the image, then initialize the timestamp
-    # and occupied/unoccupied text
-    raw_image = frame.array
-    convertToText(raw_image)
-    # show the frame
-    # cv2.imshow("Frame", raw_image)
-    # read the image
-    key = cv2.waitKey(1) & 0xFF
-    # clear the stream in preparation for the next frame
-    rawCapture.truncate(0)
-    # if the `q` key was pressed, break from the loop
-    if key == ord("q"):
-        break
-
 
 # Uses a deep learning-based text detector to detect (not recognize) regions of text in an image.
 # The text detector produces two arrays, one containing the probability of a given area containing text, and another that maps the score to a bounding box location in the input image
@@ -98,10 +73,8 @@ def decode_predictions(scores, geometry, min_confidence=0.5):
 	# return a tuple of the bounding boxes and associated confidences
 	return (rects, confidences)
 
-def convertToText(raw_image, width=320, height=320, padding=0.25):
-    east  = open("./frozen_east_text_detection.pb", "r").readlines()
-
-    image = cv2.imread(raw_image)
+def convertToText(image, east, width=320, height=320, padding=0.25):
+     
     orig = image.copy()
     (origH, origW) = image.shape[:2]
 
@@ -198,3 +171,33 @@ def convertToText(raw_image, width=320, height=320, padding=0.25):
     	# show the output image
     	cv2.imshow("Text Detection", output)
     	cv2.waitKey(0)
+
+
+# initialize the camera and grab a reference to the raw camera capture
+camera = PiCamera()
+camera.resolution = (640, 480)
+camera.framerate = 32
+rawCapture = PiRGBArray(camera, size=(640, 480))
+
+# allow the camera to warmup
+time.sleep(0.1)
+
+with open("./frozen_east_text_detection.pb", "rb") as binaryfile :
+    east = binaryfile.read()
+ 
+# capture frames from the camera
+for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+    # grab the raw NumPy array representing the image, then initialize the timestamp
+    # and occupied/unoccupied text
+    raw_image = frame.array
+    convertToText(raw_image, east)
+    # show the frame
+    # cv2.imshow("Frame", raw_image)
+    # read the image
+    key = cv2.waitKey(1) & 0xFF
+    # clear the stream in preparation for the next frame
+    rawCapture.truncate(0)
+    # if the `q` key was pressed, break from the loop
+    if key == ord("q"):
+        break
+#east.close()
