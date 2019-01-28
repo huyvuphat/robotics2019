@@ -3,11 +3,12 @@
 # python text_recognition.py --east frozen_east_text_detection.pb --image images/example_04.jpg --padding 0.05
 
 # import the necessary packages
-from imutils.object_detection import non_max_suppression
+
 import numpy as np
 import pytesseract
 import argparse
 import cv2
+from imutils.object_detection import non_max_suppression
 
 def decode_predictions(scores, geometry):
 	# grab the number of rows and columns from the scores volume, then

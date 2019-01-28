@@ -73,8 +73,7 @@ def decode_predictions(scores, geometry, min_confidence=0.5):
 	# return a tuple of the bounding boxes and associated confidences
 	return (rects, confidences)
 
-def convertToText(image, east, width=320, height=320, padding=0.25):
-     
+def convertToText(image, net, width=320, height=320, padding=0.25):
     orig = image.copy()
     (origH, origW) = image.shape[:2]
 
@@ -88,16 +87,6 @@ def convertToText(image, east, width=320, height=320, padding=0.25):
     image = cv2.resize(image, (newW, newH))
     (H, W) = image.shape[:2]
 
-    # define the two output layer names for the EAST detector model that
-    # we are interested in -- the first is the output probabilities and the
-    # second can be used to derive the bounding box coordinates of text
-    layerNames = [
-    	"feature_fusion/Conv_7/Sigmoid",
-    	"feature_fusion/concat_3"]
-
-    # load the pre-trained EAST text detector
-    print("[INFO] loading EAST text detector...")
-    net = cv2.dnn.readNet(east)
 
     # construct a blob from the image and then perform a forward pass of
     # the model to obtain the two output layer sets
@@ -112,6 +101,7 @@ def convertToText(image, east, width=320, height=320, padding=0.25):
     boxes = non_max_suppression(np.array(rects), probs=confidences)
     # initialize the list of results
     results = []
+    print(results)
 
     # loop over the bounding boxes
     for (startX, startY, endX, endY) in boxes:
@@ -182,17 +172,34 @@ rawCapture = PiRGBArray(camera, size=(640, 480))
 # allow the camera to warmup
 time.sleep(0.1)
 
-with open("./frozen_east_text_detection.pb", "rb") as binaryfile :
-    east = binaryfile.read()
- 
+# construct the argument parser and parse the arguments
+ap = argparse.ArgumentParser()
+ap.add_argument("-e", "--east", type=str,
+	help="path to input EAST text detector")
+args = vars(ap.parse_args())
+
+
+
+# define the two output layer names for the EAST detector model that
+# we are interested in -- the first is the output probabilities and the
+# second can be used to derive the bounding box coordinates of text
+layerNames = [
+"feature_fusion/Conv_7/Sigmoid",
+"feature_fusion/concat_3"]
+
+# load the pre-trained EAST text detector
+print("[INFO] loading EAST text detector...")
+net = cv2.dnn.readNet(args["east"])
+print("[INFO] finished EAST text detector")
+
 # capture frames from the camera
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     # grab the raw NumPy array representing the image, then initialize the timestamp
     # and occupied/unoccupied text
     raw_image = frame.array
-    convertToText(raw_image, east)
+    cv2.imshow("Frame", raw_image)
+    # convertToText(raw_image, net)
     # show the frame
-    # cv2.imshow("Frame", raw_image)
     # read the image
     key = cv2.waitKey(1) & 0xFF
     # clear the stream in preparation for the next frame
