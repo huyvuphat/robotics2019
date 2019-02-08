@@ -23,6 +23,9 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import cv2
+import time
+import picamera
+
 
 def load_graph(model_file):
   graph = tf.Graph()
@@ -74,6 +77,32 @@ def read_tensor_from_image_file(file_name,
     # plt.show()
     return result
 
+def read_tensor_from_camera(file_name,
+                                input_height=299,
+                                input_width=299,
+                                input_mean=0,
+                                input_std=255):
+
+    image_reader = read_tensor_from_camera
+    print(image_reader)
+    float_caster = tf.cast(image_reader, tf.float32)
+    dims_expander = tf.expand_dims(float_caster, 0)
+    resized = tf.image.resize_bilinear(dims_expander, [input_height, input_width])
+    normalized = tf.divide(tf.subtract(resized, [input_mean]), [input_std])
+
+    sess = tf.Session()
+    result = sess.run(normalized)
+    # print(result)
+    # print()
+    # img_array2 = cv2.imread(os.path.join(path2,img), cv2.IMREAD_GRAYSCALE)
+    # img_array = cv2.imread(file_name)
+    # img_array = tf.cast(img_array, tf.float32)
+    # resized_image_img_array = cv2.resize(img_array, (input_height, input_width))
+    # resized_image_img_array = tf.expand_dims(resized_image_img_array, axis=0) # expand the dimension
+    #
+    # plt.imshow(resized_image_img_array)
+    # plt.show()
+    return result
 
 def old_read_tensor_from_image_file(file_name,
                                 input_height=299,
@@ -191,48 +220,55 @@ if __name__ == "__main__":
         output_layer = args.output_layer
 
     graph = load_graph(model_file)
-    t = read_tensor_from_image_file(
-      file_name,
-      input_height=input_height,
-      input_width=input_width,
-      input_mean=input_mean,
-      input_std=input_std)
-    print(t)
-    input_name = "import/" + input_layer
-    output_name = "import/" + output_layer
-    input_operation = graph.get_operation_by_name(input_name)
-    output_operation = graph.get_operation_by_name(output_name)
+    with picamera.PiCamera() as camera:
+        camera.resolution = (320, 240)
+        camera.framerate = 24
+        time.sleep(2)
+        image = np.empty((240 * 320 * 3,), dtype=np.uint8)
+        camera.capture(image, 'bgr')
+        image = image.reshape((1, 240, 320, 3))
 
-    with tf.Session(graph=graph) as sess:
-        results = sess.run(output_operation.outputs[0], {
-            input_operation.outputs[0]: t
-        })
-    results = np.squeeze(results)
+        t = read_tensor_from_camera(
+            image,
+          input_height=input_height,
+          input_width=input_width,
+          input_mean=input_mean,
+          input_std=input_std)
 
-    top_k = results.argsort()[-5:][::-1]
-    print(label_file)
-    labels = load_labels(label_file)
-    for i in top_k[:2]:
-        print(labels[i], results[i])
-    print()
+        input_name = "import/" + input_layer
+        output_name = "import/" + output_layer
+        input_operation = graph.get_operation_by_name(input_name)
+        output_operation = graph.get_operation_by_name(output_name)
 
-    t2 = read_tensor_from_image_file(
-        file_name2,
-        input_height=input_height,
-        input_width=input_width,
-        input_mean=input_mean,
-        input_std=input_std)
+        with tf.Session(graph=graph) as sess:
+            results = sess.run(output_operation.outputs[0], {
+                input_operation.outputs[0]: t
+            })
+        results = np.squeeze(results)
+        print(results)
+        top_k = results.argsort()[-5:][::-1]
 
-    with tf.Session(graph=graph) as sess:
-        results = sess.run(output_operation.outputs[0], {
-          input_operation.outputs[0]: t2
-        })
-    results = np.squeeze(results)
+        labels = load_labels(label_file)
+        for i in top_k[:2]:
+            print(labels[i], results[i])
 
-    top_k = results.argsort()[-5:][::-1]
-    labels = load_labels(label_file)
-    for i in top_k[:2]:
-        print(labels[i], results[i])
+    # t2 = old_read_tensor_from_image_file(
+    #     file_name2,
+    #     input_height=input_height,
+    #     input_width=input_width,
+    #     input_mean=input_mean,
+    #     input_std=input_std)
+    #
+    # with tf.Session(graph=graph) as sess:
+    #     results = sess.run(output_operation.outputs[0], {
+    #       input_operation.outputs[0]: t2
+    #     })
+    # results = np.squeeze(results)
+    #
+    # top_k = results.argsort()[-5:][::-1]
+    # labels = load_labels(label_file)
+    # for i in top_k[:2]:
+    #     print(labels[i], results[i])
 
 # run test
 # python3.6 label_image.py \
