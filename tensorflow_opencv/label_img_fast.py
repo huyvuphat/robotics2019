@@ -119,8 +119,8 @@ def load_labels(label_file):
 if __name__ == "__main__":
     file_name = "/Users/huyvu/OneDrive/robotics/E_frame012.jpg"
     file_name2 = "/Users/huyvu/OneDrive/robotics/F.jpg"
-    model_file = "./tmp/output_graph.pb"
-    label_file = "./tmp/output_labels.txt"
+    model_file = "./output_graph.pb"
+    label_file = "./output_labels.txt"
     input_height = 299
     input_width = 299
     input_mean = 0
@@ -197,7 +197,7 @@ if __name__ == "__main__":
       input_width=input_width,
       input_mean=input_mean,
       input_std=input_std)
-
+    print(t)
     input_name = "import/" + input_layer
     output_name = "import/" + output_layer
     input_operation = graph.get_operation_by_name(input_name)
