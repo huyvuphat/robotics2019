@@ -83,8 +83,7 @@ def read_tensor_from_camera(file_name,
                                 input_mean=0,
                                 input_std=255):
 
-    image_reader = read_tensor_from_camera
-    print(image_reader)
+    image_reader = file_name
     float_caster = tf.cast(image_reader, tf.float32)
     dims_expander = tf.expand_dims(float_caster, 0)
     resized = tf.image.resize_bilinear(dims_expander, [input_height, input_width])
@@ -92,16 +91,6 @@ def read_tensor_from_camera(file_name,
 
     sess = tf.Session()
     result = sess.run(normalized)
-    # print(result)
-    # print()
-    # img_array2 = cv2.imread(os.path.join(path2,img), cv2.IMREAD_GRAYSCALE)
-    # img_array = cv2.imread(file_name)
-    # img_array = tf.cast(img_array, tf.float32)
-    # resized_image_img_array = cv2.resize(img_array, (input_height, input_width))
-    # resized_image_img_array = tf.expand_dims(resized_image_img_array, axis=0) # expand the dimension
-    #
-    # plt.imshow(resized_image_img_array)
-    # plt.show()
     return result
 
 def old_read_tensor_from_image_file(file_name,
@@ -220,13 +209,15 @@ if __name__ == "__main__":
         output_layer = args.output_layer
 
     graph = load_graph(model_file)
+    image = None
+    start_time = time.time()
     with picamera.PiCamera() as camera:
         camera.resolution = (320, 240)
         camera.framerate = 24
         time.sleep(2)
         image = np.empty((240 * 320 * 3,), dtype=np.uint8)
         camera.capture(image, 'bgr')
-        image = image.reshape((1, 240, 320, 3))
+        image = image.reshape((240, 320, 3))
 
         t = read_tensor_from_camera(
             image,
@@ -239,19 +230,20 @@ if __name__ == "__main__":
         output_name = "import/" + output_layer
         input_operation = graph.get_operation_by_name(input_name)
         output_operation = graph.get_operation_by_name(output_name)
-
+        
         with tf.Session(graph=graph) as sess:
             results = sess.run(output_operation.outputs[0], {
                 input_operation.outputs[0]: t
             })
         results = np.squeeze(results)
-        print(results)
+        # print(results)
         top_k = results.argsort()[-5:][::-1]
 
         labels = load_labels(label_file)
         for i in top_k[:2]:
             print(labels[i], results[i])
-
+        elapsed_time = time.time() - start_time
+        print("Elapsed time: %f" % (elapsed_time))
     # t2 = old_read_tensor_from_image_file(
     #     file_name2,
     #     input_height=input_height,
